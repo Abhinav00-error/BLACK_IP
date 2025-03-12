@@ -1,0 +1,78 @@
+import dns.resolver
+import argparse
+from termcolor import colored
+
+def print_banner():
+    banner = """
+    #######################################################
+    #                                                     #
+    #                  BLACK IP CHECKER                   #
+    #                                                     #
+    #######################################################
+    """
+    print(colored(banner, "red"))
+    print(colored("                   Created by: ABHINAV V K\n", "red", attrs=["bold"]))
+    print(colored("WARNING: This tool checks if an IP address is blacklisted!", "red"))
+    print(colored("Blacklisted IPs may be blocked by firewalls and security systems.", "red"))
+    print(colored("If your IP is blacklisted, follow the removal steps provided.", "red"))
+    print(colored("--------------------------------------------------------------", "red"))
+    print(colored("USAGE:", "red", attrs=["bold"]))
+    print(colored("  python black_ip.py <IP-Address>", "red"))
+    print(colored("--------------------------------------------------------------", "red"))
+
+# List of common DNS-based blacklists
+BLACKLISTS = [
+    "zen.spamhaus.org",
+    "bl.spamcop.net",
+    "b.barracudacentral.org",
+    "dnsbl.sorbs.net",
+    "dnsbl.spfbl.net"
+]
+
+# Function to check if IP is blacklisted
+def check_blacklist(ip):
+    reversed_ip = ".".join(ip.split(".")[::-1])  # Reverse IP for DNSBL lookup
+    blacklisted_in = []
+    
+    for bl in BLACKLISTS:
+        query = f"{reversed_ip}.{bl}"
+        try:
+            dns.resolver.resolve(query, "A")
+            blacklisted_in.append(bl)
+        except dns.resolver.NXDOMAIN:
+            continue  # Not listed in this blacklist
+        except Exception as e:
+            print(colored(f"[ERROR] Could not check {bl}: {e}", "red"))
+    
+    return blacklisted_in
+
+def get_removal_info(blacklist):
+    removal_links = {
+        "zen.spamhaus.org": "https://check.spamhaus.org/",
+        "bl.spamcop.net": "https://www.spamcop.net/bl.shtml",
+        "b.barracudacentral.org": "https://www.barracudacentral.org/rbl/removal-request",
+        "dnsbl.sorbs.net": "http://www.sorbs.net/lookup.shtml",
+        "dnsbl.spfbl.net": "https://spfbl.net/en/dnsbl/"
+    }
+    return removal_links.get(blacklist, "No removal info available.")
+
+def main():
+    parser = argparse.ArgumentParser(description="Check if an IP address is blacklisted.")
+    parser.add_argument("ip", help="IP address to check")
+    args = parser.parse_args()
+    
+    print_banner()
+    print(colored(f"\nChecking IP: {args.ip}\n", "red", attrs=["bold"]))
+    blacklisted_in = check_blacklist(args.ip)
+    
+    if blacklisted_in:
+        print(colored(f"[ALERT] {args.ip} is BLACKLISTED!", "red", attrs=["bold", "underline"]))
+        for bl in blacklisted_in:
+            print(colored(f" - Blacklisted in: {bl}", "red", attrs=["bold"]))
+            print(colored(f"   Removal Info: {get_removal_info(bl)}\n", "red"))
+    else:
+        print(colored(f"[OK] {args.ip} is NOT blacklisted", "green", attrs=["bold"]))
+        print(colored("Your IP is clean and not flagged on major blacklists.\n", "green"))
+
+if __name__ == "__main__":
+    main()
